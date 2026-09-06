@@ -5,19 +5,6 @@ on:
     branches:
       - xr1710g-6.18-integration
   workflow_dispatch:
-    inputs:
-      release_type:
-        description: 'Release Type'
-        required: true
-        default: 'none'
-        type: choice
-        options:
-          - none
-          - release
-          - prerelease
-      release_notes:
-        description: 'Release Notes'
-        required: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -92,12 +79,19 @@ jobs:
         if: always()
 
       - name: Build release body
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none'
         id: release_body
-        env:
-          RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
         run: |
-          printf '%s\n' "$RELEASE_NOTES" > /tmp/release_body.md
+          cat > /tmp/release_body.md <<EOF
+          Gemtek XR1710G OpenWrt 固件（自动构建）
+
+          - 构建日期: ${{ steps.date.outputs.date }}
+          - 分支: ${{ github.ref_name }}
+          - 提交: ${{ github.sha }}
+
+          包含插件: OpenClash(含最新 mihomo 内核)、Argon 主题/配置、Lucky、DDNS-GO、rtp2httpd、Airoha FlowSense、NetSpeedtest 及 NPU 加速支持。
+
+          刷机请使用 openwrt-airoha-an7581-gemtek_xr1710g-ubi-squashfs-sysupgrade.itb。
+          EOF
           {
             echo "body<<EOF"
             cat /tmp/release_body.md
@@ -105,14 +99,13 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Create Release
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ format('{0}-{1}', steps.date.outputs.date, github.sha) }}
           name: ${{ format('XR1710G Build {0}', steps.date.outputs.date) }}
           body: ${{ steps.release_body.outputs.body }}
           draft: false
-          prerelease: ${{ github.event.inputs.release_type == 'prerelease' }}
+          prerelease: false
           files: |
             bin/targets/airoha/an7581/*
         env:
