@@ -1,0 +1,112 @@
+name: Build XR1710G Firmware
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release Type'
+        required: true
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - release
+          - prerelease
+      release_notes:
+        description: 'Release Notes'
+        required: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: xr1710g-6.18-integration
+          fetch-depth: 1
+
+      - name: Get current date
+        id: date
+        run: |
+          echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+
+      - name: Setup build environment
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential clang gcc g++ binutils bzip2 gawk gettext git libncurses-dev libssl-dev python3 python3-setuptools rsync unzip wget xsltproc zlib1g-dev file which perl sed make golang-go
+
+      - name: Install feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Configure
+        run: |
+          cp config.seed .config
+          make defconfig
+
+      - name: Fetch latest OpenClash core
+        run: |
+          mkdir -p files/etc/openclash/core
+          curl -fsSL --retry 3 -o /tmp/clash-meta.tar.gz \
+            https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-arm64.tar.gz
+          tar -xzf /tmp/clash-meta.tar.gz -C /tmp
+          install -m 0755 /tmp/clash files/etc/openclash/core/clash_meta
+          test -s files/etc/openclash/core/clash_meta
+          echo "OpenClash core bundled: $(ls -l files/etc/openclash/core/clash_meta)"
+
+      - name: Download sources
+        run: make download -j$(nproc)
+
+      - name: Build Firmware
+        run: |
+          make -j2 world 2>&1 | tee build.log
+
+      - name: Check build status
+        run: |
+          if [ -f build.log ]; then
+            tail -100 build.log
+          fi
+          ls -la bin/targets/airoha/an7581/ 2>/dev/null || echo "No files in an7581 output"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xr1710g-firmware
+          path: |
+            bin/targets/airoha/an7581/*
+          retention-days: 30
+        if: always()
+
+      - name: Build release body
+        if: github.event.inputs.release_type != 'none'
+        id: release_body
+        env:
+          RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
+        run: |
+          printf '%s\n' "$RELEASE_NOTES" > /tmp/release_body.md
+          {
+            echo "body<<EOF"
+            cat /tmp/release_body.md
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        if: github.event.inputs.release_type != 'none'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ format('{0}-{1}', steps.date.outputs.date, github.sha) }}
+          name: ${{ format('XR1710G Build {0}', steps.date.outputs.date) }}
+          body: ${{ steps.release_body.outputs.body }}
+          draft: false
+          prerelease: ${{ github.event.inputs.release_type == 'prerelease' }}
+          files: |
+            bin/targets/airoha/an7581/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
