@@ -1,6 +1,9 @@
 name: Build XR1710G Firmware
 
 on:
+  push:
+    branches:
+      - xr1710g-6.18-integration
   workflow_dispatch:
     inputs:
       release_type:
