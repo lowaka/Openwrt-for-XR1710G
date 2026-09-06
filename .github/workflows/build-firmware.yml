@@ -83,7 +83,7 @@ jobs:
           ls -la bin/targets/airoha/an7581/ 2>/dev/null || echo "No files in an7581 output"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: xr1710g-firmware
           path: |
@@ -92,7 +92,7 @@ jobs:
         if: always()
 
       - name: Build release body
-        if: github.event.inputs.release_type != 'none'
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none'
         id: release_body
         env:
           RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
@@ -105,8 +105,8 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Create Release
-        if: github.event.inputs.release_type != 'none'
-        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_type != 'none'
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ format('{0}-{1}', steps.date.outputs.date, github.sha) }}
           name: ${{ format('XR1710G Build {0}', steps.date.outputs.date) }}
