@@ -46,6 +46,10 @@ jobs:
 
       - name: Install feeds
         run: |
+          # Argon packages have their Makefile at repo root, so clone them
+          # directly under package/ (feed names cannot contain dashes).
+          git clone --depth 1 https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
+          git clone --depth 1 https://github.com/jerrykuku/luci-app-argon-config.git package/luci-app-argon-config
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 

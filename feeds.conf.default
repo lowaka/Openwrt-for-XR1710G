@@ -4,10 +4,8 @@ src-git routing https://git.openwrt.org/feed/routing.git
 src-git telephony https://git.openwrt.org/feed/telephony.git
 src-git video https://github.com/openwrt/video.git
 src-git openclash https://github.com/vernesong/OpenClash.git
-src-git luci-theme-argon https://github.com/jerrykuku/luci-theme-argon.git
-src-git luci-app-argon-config https://github.com/jerrykuku/luci-app-argon-config.git
 src-git lucky https://github.com/gdy666/luci-app-lucky.git
-src-git ddns-go https://github.com/sirpdboy/luci-app-ddns-go.git
+src-git ddnsgo https://github.com/sirpdboy/luci-app-ddns-go.git
 src-git rtp2httpd https://github.com/stackia/rtp2httpd.git
 #src-git targets https://github.com/openwrt/targets.git
 #src-git oldpackages http://git.openwrt.org/packages.git
